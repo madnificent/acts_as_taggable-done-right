@@ -1,13 +1,23 @@
 TagsDoneRight
 =============
 
-Introduction goes here.
+TagsDoneRight is an acts_as_taggable plugin, that puts the tags in a separate database.  This approach allows you to have a proper database schema, with minimal effort to allow tagging.
 
 
 Example
 =======
 
-Example goes here.
+First install TagsDoneRight, please ensure the install-script is called.
+
+As an example, we'll create a system to store books, and allow tags to be placed on them.
+
+  script/generate scaffold book name:string comment:text
+  script/generate tagsupport book
+
+Now you can use the methods book.tag_names=( string, separator ) to set new tags (tags are parsed through the separator and the individual fields are trimmed.  You can use book.tag_names to get a string containing all the tag-names.  This means you can use book.tag_names in forms for the book, which will transparantly handle the tags.
 
 
-Copyright (c) 2008 [name of plugin creator], released under the MIT license
+Support for useful tagging features is coming sometime later (tag clouds etc).
+
+
+Copyright (c) 2008 MADnificent, released under the MIT license
