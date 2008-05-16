@@ -1,4 +1,4 @@
-class <%= class_name.pluralize %>Tags < ActiveRecord::Migration
+class Create<%= class_name.pluralize %>Tags < ActiveRecord::Migration
   def self.up
     create_table :<%= new_table_name %> do |t|
       t.column :<%= singular_name %>_id, :integer
