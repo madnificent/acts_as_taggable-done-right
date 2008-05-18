@@ -1,6 +1,6 @@
 class Create<%= class_name.pluralize %>Tags < ActiveRecord::Migration
   def self.up
-    create_table :<%= new_table_name %> do |t|
+    create_table :<%= new_table_name %>, :id => false do |t|
       t.column :<%= singular_name %>_id, :integer
       t.column :tag_id, :integer
     end
