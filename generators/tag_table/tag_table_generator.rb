@@ -11,6 +11,7 @@ class TagTableGenerator < Rails::Generator::NamedBase
   def manifest
     record do |m|
       m.migration_template 'migration.rb', "db/migrate", :migration_file_name => "create_#{table_name}"
+      m.template "tag_class.rb", "app/models/#{class_name.tableize.singularize}.rb"
     end
   end
 

@@ -40,7 +40,7 @@ module TagsDoneRight
         string = args[0]
         separator = args[1] || opts[:standard_separator]
         self.send! "#{opts[:tag_class].table_name}=",
-                   string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
+        string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
       
       
