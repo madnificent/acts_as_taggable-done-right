@@ -17,13 +17,15 @@ module TagsDoneRight
   
   module InstanceMethods
     # something that resembles to tag_names is defined in ClassMethods
+    # def tag_names
     
     # something that resembles to tag_names= is defined in ClassMethods
+    # def tag_names( string_with_tags, separator = /[,\.\s;]+/ )
   end
   
   module ClassMethods
     def acts_as_taggable( opts={ })
-      opts = { :tag_class => Tag, :tag_names_name => "tag_names", :standard_separator => ", " }.merge opts
+      opts = { :tag_class => Tag, :tag_names_name => "tag_names", :show_separator => ", ", :read_separator => /[,\.\s;]+/ }.merge opts
       
       
       # Link the Tag class to the current class, and vice-versa
@@ -34,11 +36,11 @@ module TagsDoneRight
 
       # Create the getter and setter for the list of tag_names
       TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] do ||
-          self.send( opts[:tag_class].table_name).map{ |tag| tag.name }.join opts[:standard_separator]
+          self.send( opts[:tag_class].table_name).map{ |tag| tag.name }.join opts[:show_separator]
       end
       TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] + "=" do |*args|
         string = args[0]
-        separator = args[1] || opts[:standard_separator]
+        separator = args[1] || opts[:read_separator] 
         self.send! "#{opts[:tag_class].table_name}=",
         string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
