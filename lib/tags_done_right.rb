@@ -9,32 +9,43 @@ module TagsDoneRight
   def self.included(mod)
     mod.extend(ClassMethods)
   end
-  
-  module ClassMethods
-    def acts_as_taggable
-      # Link the Tag class to the current class, and vice-versa
-      has_and_belongs_to_many :tags
-      Tag.send :has_and_belongs_to_many, self.class.to_s.tableize
-            
-      extend TagsDoneRight::SingletonMethods
-      include TagsDoneRight::InstanceMethods
-    end
-  end
+
   
   module SingletonMethods
     # No singletonmethods yet
   end
   
   module InstanceMethods
-    # Easy setter to set a string that defines the used tags
-    def tag_names= (string, separator = ",")
-      tag_names = string.split(separator).map{ |tag_name_with_spaces| tag_name_with_spaces.strip }
-      self.tags = tag_names.map{ |name| Tag.find_or_create_by_name name }
-    end
+    # something that resembles to tag_names is defined in ClassMethods
     
-    # Easy accessor to get a string that defines the currently used tags
-    def tag_names
-      tags.map{ |tag| tag.name }.join ", "
+    # something that resembles to tag_names= is defined in ClassMethods
+  end
+  
+  module ClassMethods
+    def acts_as_taggable( opts={ })
+      opts = { :tag_class => Tag, :tag_names_name => "tag_names", :standard_separator => ", " }.merge opts
+      
+      
+      # Link the Tag class to the current class, and vice-versa
+      has_and_belongs_to_many opts[:tag_class].table_name
+
+      # this might not work on older ruby-versions (pre 1.8.6)!
+      opts[:tag_class].send! :has_and_belongs_to_many, self.class.to_s.tableize
+
+      # Create the getter and setter for the list of tag_names
+      TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] do ||
+          self.send( opts[:tag_class].table_name).map{ |tag| tag.name }.join opts[:standard_separator]
+      end
+      TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] + "=" do |*args|
+        string = args[0]
+        separator = args[1] || opts[:standard_separator]
+        self.send! "#{opts[:tag_class].table_name}=",
+                   string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
+      end
+      
+      
+      extend TagsDoneRight::SingletonMethods
+      include TagsDoneRight::InstanceMethods
     end
   end
   
