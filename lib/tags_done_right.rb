@@ -1,6 +1,6 @@
 require 'active_record'
 
-class Tag < ActiveRecord::Base
+class Tag < ActiveRecord::Base # This is used only for the standard tag-definition
 end
 
 # TagsDoneRight
