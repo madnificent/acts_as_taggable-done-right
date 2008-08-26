@@ -14,7 +14,7 @@ module TagsDoneRight
   module SingletonMethods
     # No singletonmethods yet
   end
-  
+
   module InstanceMethods
     # something that resembles to tag_names is defined in ClassMethods
     # def tag_names
@@ -22,7 +22,7 @@ module TagsDoneRight
     # something that resembles to tag_names= is defined in ClassMethods
     # def tag_names( string_with_tags, separator = /[,\.\s;]+/ )
   end
-  
+
   module ClassMethods
     def acts_as_taggable( opts={ })
       opts = { :tag_class => Tag, :tag_names_name => "tag_names", :show_separator => ", ", :read_separator => /[,\.\s;]+/ }.merge opts
@@ -45,10 +45,27 @@ module TagsDoneRight
         string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
       
+      self.class.send! "define_method", "#{opts[:tag_class].to_s.tableize}_cloud" do |options|
+        method_opts = { :items => 10 , :groups => nil }.merge options
+        method_opts[:groups] ||= method_opts[:items]
+        
+        cloud = opts[:tag_class].find( :all,
+                                       :select => "*, COUNT(*) AS tag_count",
+                                       :joins =>  self.table_name.to_sym,
+                                       :group =>  opts[:tag_class].to_s.table_name.singularize + "_id",
+                                       :order => "tag_count DESC",
+                                       :limit => method_opts[:items] )
+
+        max = cloud.first.tag_count.to_i if cloud.first
+        cloud.each do |tag|
+          tag.tag_count = ((tag.tag_count.to_i * method_opts[:groups]) / max).to_i
+        end
+        
+        cloud
+      end
       
       extend TagsDoneRight::SingletonMethods
       include TagsDoneRight::InstanceMethods
     end
   end
-  
 end
