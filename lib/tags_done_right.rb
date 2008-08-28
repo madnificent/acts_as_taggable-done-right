@@ -51,6 +51,26 @@ module TagsDoneRight
         string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
 
+      # Object.find_by_tags
+      self.class.send! "define_method", "find_by_#{opts[:tag_class].table_name}" do |tags|
+        connect = ""
+        conditions = ""
+        tags.each do |tag|
+          conditions += connect + "
+EXISTS (SELECT *
+        FROM #{connection_table_name} CONN
+        WHERE CONN.#{opts[:tag_class].table_name.singularize}_id = '#{tag.id}'
+          AND OBJECT.id = CONN.#{self.table_name.singularize}_id)"
+          connect = " AND "
+        end
+
+        self.find( :all,
+                   :select => "OBJECT.*",
+                   :from => "#{self.table_name} OBJECT",
+                   :conditions => "#{conditions}" )
+      end
+
+      # Object.find_by_tag_names
       self.class.send! "define_method", "find_by_#{opts[:tag_names_name]}" do |tags|
         connect = ""
         conditions = ""
@@ -70,7 +90,7 @@ EXISTS (SELECT *
                    :conditions => "#{conditions}" )
       end
                    
-      
+      # Object.tags_cloud :items :groups :tags
       self.class.send! "define_method", "#{opts[:tag_class].to_s.tableize}_cloud" do |options|
         method_opts = { :items => 10 , :groups => nil , :tags => [] }.merge options
         method_opts[:groups] ||= method_opts[:items]
