@@ -24,8 +24,9 @@ module TagsDoneRight
   end
 
   module ClassMethods
-    def acts_as_taggable( opts={ })
-      opts = { :tag_class => Tag, :tag_names_name => "tag_names", :show_separator => ", ", :read_separator => /[,\.\s;]+/ }.merge opts
+    def acts_as_taggable( user_options={ })
+      opts = { :tag_class => Tag, :tag_names_name => nil, :show_separator => ", ", :read_separator => /[,\.\s;]+/ }.merge user_options
+      opts[:tag_names_name] ||= opts[:tag_class].table_name.singularize + "_names"
 
       connection_table_name = if self.table_name < opts[:tag_class].table_name
                                 self.table_name + "_" + opts[:tag_class].table_name
@@ -49,6 +50,26 @@ module TagsDoneRight
         self.send! "#{opts[:tag_class].table_name}=",
         string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
+
+      self.class.send! "define_method", "find_by_#{opts[:tag_names_name]}" do |tags|
+        connect = ""
+        conditions = ""
+        tags.each do |tag|
+          conditions += connect + "
+EXISTS (SELECT *
+        FROM #{connection_table_name} CONN, #{opts[:tag_class].table_name} TAG
+        WHERE TAG.name = '#{tag}'
+          AND TAG.id = CONN.#{opts[:tag_class].table_name.singularize}_id
+          AND OBJECT.id = CONN.#{self.table_name.singularize}_id)"
+          connect = " AND "
+        end
+        
+        self.find( :all,
+                   :select => "OBJECT.*",
+                   :from => "#{self.table_name} OBJECT",
+                   :conditions => "#{conditions}" )
+      end
+                   
       
       self.class.send! "define_method", "#{opts[:tag_class].to_s.tableize}_cloud" do |options|
         method_opts = { :items => 10 , :groups => nil , :tags => [] }.merge options
@@ -56,7 +77,7 @@ module TagsDoneRight
         tags = method_opts[:tags]
         items = method_opts[:items]
         groups = method_opts[:groups]
-
+        
         if tags and not tags.empty?
           # query contains an insane query that fetches the tag, and a count for that tag
           query = "
@@ -83,7 +104,7 @@ GROUP BY TAG.id
 ORDER BY tag_count DESC
 LIMIT #{items}"
 
-          cloud = InternalTag.find_by_sql( query )
+          cloud = opts[:tag_class].find_by_sql( query )
           max = cloud.first.tag_count.to_i if cloud.first
           cloud.each do |tag|
             tag.tag_count = ((tag.tag_count.to_i * groups) / max).to_i
