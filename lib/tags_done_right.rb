@@ -38,7 +38,7 @@ module TagsDoneRight
       has_and_belongs_to_many opts[:tag_class].table_name
 
       # this might not work on older ruby-versions (pre 1.8.6)!
-      opts[:tag_class].send! :has_and_belongs_to_many, self.class.to_s.tableize
+      opts[:tag_class].send! :has_and_belongs_to_many, self.table_name
 
       # Create the getter and setter for the list of tag_names
       TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] do ||
@@ -92,7 +92,7 @@ EXISTS (SELECT *
                    
       # Object.tags_cloud :items :groups :tags
       self.class.send! "define_method", "#{opts[:tag_class].to_s.tableize}_cloud" do |options|
-        method_opts = { :items => 10 , :groups => nil , :tags => [] }.merge options
+        method_opts = { :items => 10 , :groups => nil , :tags => [] , :like => nil, :not_like => nil }.merge options
         method_opts[:groups] ||= method_opts[:items]
         tags = method_opts[:tags]
         items = method_opts[:items]
@@ -119,11 +119,28 @@ FROM (SELECT *
           end
           query +=                                         ") AS MEGA
      JOIN #{opts[:tag_class].table_name} TAG
-     ON TAG.id = MEGA.#{opts[:tag_class].table_name.singularize + '_id'}
+     ON TAG.id = MEGA.#{opts[:tag_class].table_name.singularize + '_id'}"
+          if method_opts[:like] || method_opts[:not_like]
+            and_sql = " "
+            query += "
+WHERE "
+            if method_opts[:like]
+              query += "
+      TAG.name LIKE '#{method_opts[:like]}' "
+              and_sql = "AND"
+            end
+            if method_opts[:not_like]
+            query += "
+      #{and_sql} NOT TAG.name LIKE '#{method_opts[:not_like]}' "
+            end
+          end
+          query += "
 GROUP BY TAG.id
 ORDER BY tag_count DESC
 LIMIT #{items}"
 
+          puts query;
+          
           cloud = opts[:tag_class].find_by_sql( query )
           max = cloud.first.tag_count.to_i if cloud.first
           cloud.each do |tag|
