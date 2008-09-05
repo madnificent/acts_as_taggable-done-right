@@ -38,7 +38,7 @@ module TagsDoneRight
       has_and_belongs_to_many opts[:tag_class].table_name
 
       # this might not work on older ruby-versions (pre 1.8.6)!
-      opts[:tag_class].send! :has_and_belongs_to_many, self.table_name
+      opts[:tag_class].send! :has_and_belongs_to_many, self.table_name.to_sym
 
       # Create the getter and setter for the list of tag_names
       TagsDoneRight::InstanceMethods.send! "define_method", opts[:tag_names_name] do ||
