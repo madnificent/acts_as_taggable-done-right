@@ -51,8 +51,14 @@ module TagsDoneRight
         string.split( separator ).map{ |name| opts[:tag_class].find_or_create_by_name name.strip }
       end
 
-      # Object.find_by_tags
-      self.class.send! "define_method", "find_by_#{opts[:tag_class].table_name}" do |tags|
+      # Object.find_by_tags :tag_array :finder_options
+      #  tag_array must be an array of Tag objects
+      #  finder_options is a hash that will be fed to the find-method.  The :select, :from and :conditions clauses are overwritten.
+      self.class.send! "define_method", "find_by_#{opts[:tag_class].table_name}" do |*args|
+        # parse the given arguments
+        tags = args[0]
+        options = args[1] || { }
+        # create the :conditions string
         connect = ""
         conditions = ""
         tags.each do |tag|
@@ -63,11 +69,34 @@ EXISTS (SELECT *
           AND OBJECT.id = CONN.#{self.table_name.singularize}_id)"
           connect = " AND "
         end
+        # override the user's requested options with the needed finder's options
+        finder_hash = options.merge :select => "OBJECT.*", :from => "#{self.table_name} OBJECT", :conditions => "#{conditions}"
+        # get the result through the appropriate finder
+        self.find( :all, finder_hash )
+      end
 
-        self.find( :all,
-                   :select => "OBJECT.*",
-                   :from => "#{self.table_name} OBJECT",
-                   :conditions => "#{conditions}" )
+      # Object.count_by_tags :tag_array :finder_options
+      #  tag_array must be an array of Tag objects
+      #  finder_options is a hash that will be fed to the find-method.  The :select, :from and :conditions clauses are overwritten.
+      self.class.send! "define_method", "count_by_#{opts[:tag_class].table_name}" do |*args|
+        # parse the given arguments
+        tags = args[0]
+        options = args[1] || { }
+        # create the :conditions string
+        connect = ""
+        conditions = ""
+        tags.each do |tag|
+          conditions += connect + "
+EXISTS (SELECT *
+        FROM #{connection_table_name} CONN
+        WHERE CONN.#{opts[:tag_class].table_name.singularize}_id = '#{tag.id}'
+          AND #{self.table_name}.id = CONN.#{self.table_name.singularize}_id)"
+          connect = " AND "
+        end
+        # override the user's requested options with the needed finder's options
+        finder_hash = options.merge :conditions => "#{conditions}"
+        # get the result through the appropriate finder
+        self.count( finder_hash ) # only this, the abstance of a :select and a :from condition is different from find_by_tags. This deserves a clean-up
       end
 
       # Object.find_by_tag_names
